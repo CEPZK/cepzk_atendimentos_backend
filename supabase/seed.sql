@@ -1,0 +1,5 @@
+-- Os dados de referência (departamentos, setores, horários, distonias,
+-- queixas e procedimentos) já vêm aplicados pela migration 002, que é
+-- executada automaticamente no ambiente local.
+--
+-- Use este arquivo apenas para dados extras exclusivos do ambiente local.

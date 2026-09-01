@@ -1,0 +1,8 @@
+# Configuração mínima do Supabase CLI para desenvolvimento local.
+# Rode `supabase init` para regenerar/completar esta configuração conforme
+# a versão do CLI instalada.
+project_id = "cepzk_atendimentos"
+
+[auth]
+site_url = "http://localhost:3000"
+enable_signup = true

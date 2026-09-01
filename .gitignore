@@ -1,0 +1,16 @@
+# Ambiente
+.env
+.env.*
+!.env.example
+
+# Node
+node_modules/
+
+# Supabase CLI — artefatos locais
+supabase/.temp/
+supabase/.branches/
+
+# Sistema operacional / editor
+.DS_Store
+Thumbs.db
+*~
