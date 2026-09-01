@@ -30,7 +30,8 @@ mantêm a agenda de sessões de cada assistido, com procedimentos e relatórios.
 │       ├── 20260831000001_create_schema.sql        # Esquema do banco
 │       ├── 20260831000002_seed_reference_data.sql  # Catálogos iniciais
 │       ├── 20260831000003_row_level_security.sql   # RLS
-│       └── 20260831000004_auth_hooks.sql           # Triggers do Supabase Auth
+│       ├── 20260831000004_auth_hooks.sql           # Triggers do Supabase Auth
+│       └── 20260901000005_create_atendimento.sql   # Catálogo de atendimentos
 ├── docs/
 │   ├── banco-de-dados.md    # Documentação do banco (PT-BR)
 │   └── autenticacao.md      # Documentação da autenticação (PT-BR)
@@ -60,7 +61,7 @@ supabase db push
 **Opção B — SQL Editor (manual):**
 
 No dashboard, abra *SQL Editor* e execute os arquivos de
-`supabase/migrations/` **em ordem** (001 → 004).
+`supabase/migrations/` **em ordem** (001 → 005).
 
 ### 3. Configure o ambiente
 
@@ -92,10 +93,10 @@ somente `admin` envia convites e altera papéis — veja
 
 ## Banco de dados
 
-15 tabelas divididas em dois domínios:
+16 tabelas divididas em dois domínios:
 
 - **`cepzk_*`** — estrutura geral (departamentos, setores, horários,
-  voluntários, assistidos, tratamentos);
+  atendimentos, voluntários, assistidos, tratamentos);
 - **`aca_*`** — extensões específicas do Acolher com Amor (distonias,
   queixas, procedimentos, agenda de sessões, relatórios).
 

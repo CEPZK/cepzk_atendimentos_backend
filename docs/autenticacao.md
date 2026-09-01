@@ -210,7 +210,8 @@ específicas por feature, por exemplo:
 - voluntário só **altera** sessões e relatórios dos setores em que atua
   (consultando `cepzk_escala`);
 - catálogos (`cepzk_departamento`, `cepzk_setor`, `cepzk_horario`,
-  `aca_distonia`, `aca_queixa`, `aca_procedimento`) em **somente leitura**;
+  `cepzk_atendimento`, `aca_distonia`, `aca_queixa`, `aca_procedimento`) em
+  **somente leitura**;
 - assistidos só podem ser **alterados** por quem atua no Atendimento
   Fraterno.
 
