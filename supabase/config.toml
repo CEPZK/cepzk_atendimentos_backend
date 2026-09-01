@@ -5,12 +5,20 @@ project_id = "cepzk_atendimentos"
 
 [auth]
 # O fluxo de login do sistema é magic link (e-mail, sem senha), que já vem
-# habilitado por padrão. O site_url abaixo define a base para o redirecionamento
-# após o clique no link — ajuste para o ambiente da aplicação.
+# habilitado por padrão. O site_url abaixo define a base para o
+# redirecionamento após o clique no link — ajuste para o ambiente da
+# aplicação.
 site_url = "http://localhost:3000"
-enable_signup = true
+
+# Cadastro próprio (self-service) DESABILITADO: o acesso é somente por
+# convite. O admin convida voluntários (dashboard do Supabase ou, no
+# futuro, Edge Function com service role) e só e-mails convidados
+# conseguem criar conta e logar.
+enable_signup = false
 
 [auth.email]
-# Sem confirmação de e-mail em etapa separada: o clique no magic link
-# autentica o usuário imediatamente.
+# Mesma restrição no nível do provider de e-mail.
+enable_signup = false
+# Sem confirmação de e-mail em etapa separada: o clique no link
+# (convite ou magic link) autentica o usuário imediatamente.
 enable_confirmations = false

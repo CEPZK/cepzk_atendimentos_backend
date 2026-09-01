@@ -5,20 +5,52 @@ centro).
 
 ## Como funciona
 
-O acesso ao sistema é **sem senha**: o voluntário informa o e-mail e recebe
-um **magic link** (link mágico) por e-mail. Ao clicar no link, ele entra no
-sistema.
+O acesso é **sem senha** e **somente por convite (invite-only)**:
 
-- **Primeiro acesso (voluntário novo):** o Supabase Auth cria o usuário
-  automaticamente no primeiro clique no link (sign-up automático do fluxo)
-  e o trigger cria o `cepzk_voluntario` correspondente.
-- **Acessos seguintes:** o link autentica o usuário existente.
-- **Senha:** não existe em nenhum momento. Como o usuário é criado via
-  magic link, ele nunca tem senha, e login por e-mail/senha simplesmente
-  não funciona para esses usuários. A interface **não deve oferecer campo
-  de senha**.
+1. **Convite:** o admin convida o voluntário pelo e-mail (no Supabase
+   Dashboard ou, no futuro, pela própria aplicação). O voluntário recebe
+   um e-mail com o link de convite;
+2. **Primeiro acesso:** o voluntário clica no link, confirma a conta e
+   entra na plataforma. O registro em `cepzk_voluntario` é criado
+   automaticamente no momento do convite (já com o nome informado por
+   quem convidou);
+3. **Logins seguintes:** o voluntário clica em "Entrar", informa o e-mail
+   e um novo **magic link** é enviado; ao clicar, volta a estar logado.
+
+- **Cadastro próprio é desabilitado:** `enable_signup = false` — um e-mail
+  que não recebeu convite não consegue criar conta nem receber link;
+- **Senha:** não existe em nenhum momento (login por e-mail/senha não
+  funciona); a interface **não deve oferecer campo de senha**;
 - **JWT:** expiração padrão de 1 hora. O `id` do usuário no JWT é o mesmo
   `uuid` usado em `cepzk_voluntario.id`.
+
+### Enviando convites (admin)
+
+**Pelo Dashboard (sem código):** *Authentication → Users → Invite user* →
+informe o e-mail (e o nome, nos metadados) → o e-mail de convite é
+enviado.
+
+**Pela aplicação (previsto):** tela de administração que chama uma Edge
+Function com a **service role key** (a API de admin nunca roda no
+frontend):
+
+```js
+// dentro de uma Edge Function (service role)
+const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail({
+  email: 'maria@exemplo.com',
+  data: { nome: 'Maria da Silva' }, // vira raw_user_meta_data
+  redirectTo: 'https://SEU-APP/auth/callback', // página de callback
+});
+```
+
+> **Primeiro admin:** como ainda não há ninguém logado, o primeiro admin
+> não pode ser convidado pelo sistema. Crie-o manualmente em
+> *Authentication → Users → Add user* (marcando *Auto confirm user*) e ele
+> loga com magic link como qualquer outro voluntário.
+>
+> Obs.: o link de convite não usa PKCE — a página de callback da
+> aplicação precisará tratar o redirecionamento do convite além do fluxo
+> de magic link.
 
 ### Fluxo de login (frontend)
 
@@ -27,13 +59,14 @@ import { createClient } from '@supabase/supabase-js';
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// voluntário informa e-mail (e nome, para cadastro/sincronização)
+// voluntário informa apenas o e-mail; se ele foi convidado, um novo
+// magic link é enviado para o e-mail
 const { data, error } = await supabase.auth.signInWithOtp({
   email: 'maria@exemplo.com',
   options: {
     // deve estar na allowlist de redirect URLs do projeto
     emailRedirectTo: 'https://SEU-APP/auth/callback',
-    data: { nome: 'Maria da Silva' }, // vira raw_user_meta_data
+    shouldCreateUser: false, // reforço: nunca criar usuário sem convite
   },
 });
 // fluxo: e-mail chega → voluntário clica no link → cai na URL de callback
@@ -46,17 +79,16 @@ const { data, error } = await supabase.auth.signInWithOtp({
 
 ### Configuração no projeto (dashboard)
 
-- **Authentication → URL Configuration**: defina a *Site URL* e adicione a
-  URL de callback da aplicação (ex.: `https://seu-app.com/auth/callback`) —
-  são as **únicas** URLs para onde o magic link pode redirecionar;
-- **Authentication → Providers → Email**: mantenha o provider de e-mail
-  habilitado (o magic link vem ativo por padrão);
+- **Authentication → Providers → Email**: **desative** *"Allow new users
+  to sign up"* (essencial para o invite-only — bloqueia cadastro próprio);
+- **Authentication → URL Configuration**: defina a *Site URL* e adicione
+  as URLs de callback da aplicação (ex.: `https://seu-app.com/auth/callback`)
+  — são as **únicas** URLs para onde os links podem redirecionar;
 - **(recomendado em produção) Authentication → SMTP Settings**: configure
   um provedor de e-mail próprio (ex.: Resend, SendGrid) para entrega
-  confiável dos links;
-- **Authentication → Users**: novos voluntários aparecem aqui
-  automaticamente no primeiro login (criação manual também é possível,
-  para contas de administração).
+  confiável;
+- Cada convite e cada login enviam e-mail e estão sujeitos ao rate limit
+  do projeto (ajustável em *Authentication → Auth Settings*).
 
 ## Como a aplicação acessa o banco
 
@@ -92,8 +124,9 @@ conforme as políticas.
 ## Perfil do voluntário
 
 `cepzk_voluntario` é um espelho 1:1 de `auth.users`. O registro do voluntário
-é **criado automaticamente no primeiro login** (quando o usuário é criado
-em `auth.users`) e **sincronizado** quando os metadados do usuário mudam:
+é **criado automaticamente no momento do convite** (o `inviteUserByEmail` já
+cria a linha em `auth.users`) e **sincronizado** quando os metadados do
+usuário mudam:
 
 - `on_auth_user_created` (`after insert`) → cria o voluntário;
 - `on_auth_user_updated` (`after update` de `raw_user_meta_data`) →
@@ -101,8 +134,8 @@ em `auth.users`) e **sincronizado** quando os metadados do usuário mudam:
 
 O nome do voluntário vem, nesta ordem:
 
-1. `raw_user_meta_data.nome` — campo `nome` enviado no login (opção `data`
-   do `signInWithOtp`);
+1. `raw_user_meta_data.nome` — campo `nome` enviado no convite (opção `data`
+   do `inviteUserByEmail`);
 2. `raw_user_meta_data.name`;
 3. parte do e-mail antes do `@`.
 
@@ -152,12 +185,12 @@ tabelas correspondentes.
 
 ## Boas práticas
 
-- **Nunca** exponha a `service_role key` no frontend — use apenas no
-  backend/processos administrativos;
+- **Nunca** exponha a `service_role key` no frontend — ela é usada apenas
+  em Edge Functions (ex.: envio de convites) e processos administrativos;
 - O frontend deve usar a **anon key** + JWT do usuário logado
   (`supabase.auth.getSession()`);
-- O formulário de login deve ter **apenas o campo de e-mail** (e nome, no
-  cadastro) — nenhum campo de senha;
+- O formulário de login deve ter **apenas o campo de e-mail** — nenhum
+  campo de senha;
 - Em caso de desligamento de um voluntário: desabilite/exclua o usuário em
   *Authentication → Users*. A exclusão do `auth.users` remove o login; o
   registro em `cepzk_voluntario` (e o histórico em assistidos/relatórios)

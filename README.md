@@ -80,11 +80,13 @@ O ambiente local aplica as migrations e o `seed.sql` automaticamente.
 
 ## Autenticação
 
-Acesso **sem senha**: o voluntário informa o e-mail e entra pelo **magic
-link** enviado por e-mail (Supabase Auth). No primeiro clique, o usuário é
-criado automaticamente e o voluntário aparece em `cepzk_voluntario`
-(mesmo `id` do `auth.users`) via trigger — veja
-[docs/autenticacao.md](docs/autenticacao.md).
+Acesso **sem senha e somente por convite (invite-only)**: o admin convida o
+voluntário por e-mail (Supabase Auth *invitations*); o voluntário clica no
+link de convite e entra na plataforma. Nos logins seguintes, informa o
+e-mail e recebe um novo magic link. Cadastro próprio está desabilitado —
+só convidados conseguem entrar. O `cepzk_voluntario` é criado
+automaticamente no momento do convite (mesmo `id` do `auth.users`) via
+trigger — veja [docs/autenticacao.md](docs/autenticacao.md).
 
 ## Banco de dados
 
