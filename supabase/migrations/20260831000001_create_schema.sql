@@ -186,6 +186,9 @@ create index aca_sessao_tratamento_id_idx
 create index aca_sessao_data_idx
     on public.aca_sessao (data);
 
+create index aca_relatorio_sessao_id_idx
+    on public.aca_relatorio (sessao_id);
+
 create index aca_relatorio_ponte_id_idx
     on public.aca_relatorio (ponte_id);
 

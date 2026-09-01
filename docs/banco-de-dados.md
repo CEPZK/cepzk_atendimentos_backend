@@ -32,7 +32,7 @@ erDiagram
     aca_tratamento ||--o{ aca_sessao : "agenda"
     aca_sessao ||--o{ aca_sessao_procedimento : "inclui"
     aca_procedimento ||--o{ aca_sessao_procedimento : "executado em"
-    aca_sessao ||--o| aca_relatorio : "gera"
+    aca_sessao ||--o{ aca_relatorio : "gera"
     cepzk_voluntario ||--o{ aca_relatorio : "ponte / dirigente"
 ```
 
@@ -264,8 +264,8 @@ FKs já permitem o uso imediato.
 
 | Arquivo                          | Conteúdo                              |
 | -------------------------------- | ------------------------------------- |
-| `20260831000001_create_schema.sql` | Tabelas, FKs e índices               |
-| `20260831000002_seed_reference_data.sql` | Dados de referência            |
+| `20260831000001_create_schema.sql` | Tabelas, enum `papel_voluntario`, FKs e índices |
+| `20260831000002_seed_reference_data.sql` | Dados de referência (inclui precedência dos setores) |
 | `20260831000003_row_level_security.sql` | RLS + políticas                 |
 | `20260831000004_auth_hooks.sql`  | Triggers de criação/sincronização do voluntário |
 
