@@ -25,7 +25,9 @@ create table public.cepzk_departamento (
 create table public.cepzk_setor (
     id              smallserial primary key,
     nome            text not null,
-    departamento_id smallint not null references public.cepzk_departamento (id)
+    departamento_id smallint not null references public.cepzk_departamento (id),
+    -- Prioridade do tratamento do setor (menor número = mais prioritário)
+    precedencia_tratamento smallint not null
 );
 
 -- Ex.: Terça-Feira 20h, Sexta-Feira 19h, Sábado 9h30
@@ -75,30 +77,20 @@ create table public.cepzk_assistido (
     nome_completo    text     not null unique,
     -- Voluntário (Atendimento Fraterno) que realizou a entrevista
     entrevistador_id uuid     not null references public.cepzk_voluntario (id),
-    -- Tratamento em andamento (FK criada ao final — dependência circular)
-    tratamento_atual int,
     data_criacao     timestamptz not null default now()
 );
 
 create table public.cepzk_tratamento (
-    id                 serial   primary key,
-    assistido_id       int      not null, -- FK criada ao final (dependência circular)
-    setor_id           smallint not null references public.cepzk_setor (id),
-    horario_id         smallint not null references public.cepzk_horario (id),
-    obs                text,
-    -- Encadeamento dos próximos tratamentos do assistido
-    proximo_tratamento int      references public.cepzk_tratamento (id),
+    id         serial   primary key,
+    assistido_id int    not null references public.cepzk_assistido (id) on delete cascade,
+    setor_id   smallint not null references public.cepzk_setor (id),
+    horario_id smallint not null references public.cepzk_horario (id),
+    obs        text,
+    -- Estado do tratamento ('pendente' até a alta; o voluntário marca
+    -- como completo quando o assistido recebe alta)
+    estado     text     not null default 'pendente',
     unique (assistido_id, setor_id)
 );
-
--- Fechando a dependência circular assistido <-> tratamento
-alter table public.cepzk_assistido
-    add constraint cepzk_assistido_tratamento_atual_fkey
-    foreign key (tratamento_atual) references public.cepzk_tratamento (id);
-
-alter table public.cepzk_tratamento
-    add constraint cepzk_tratamento_assistido_fkey
-    foreign key (assistido_id) references public.cepzk_assistido (id) on delete cascade;
 
 -- -----------------------------------------------------------------------------
 -- Acolher com Amor (ACA) — extensões específicas do tratamento
@@ -183,9 +175,6 @@ create index cepzk_tratamento_setor_id_idx
 
 create index cepzk_tratamento_horario_id_idx
     on public.cepzk_tratamento (horario_id);
-
-create index cepzk_tratamento_proximo_tratamento_idx
-    on public.cepzk_tratamento (proximo_tratamento);
 
 create index aca_tratamento_distonia_id_idx
     on public.aca_tratamento (distonia_id);

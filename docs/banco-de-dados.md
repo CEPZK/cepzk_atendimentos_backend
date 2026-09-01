@@ -25,8 +25,6 @@ erDiagram
     cepzk_horario ||--o{ cepzk_escala : "nestes horarios"
     cepzk_voluntario ||--o{ cepzk_assistido : "entrevista"
     cepzk_assistido ||--o{ cepzk_tratamento : "recebe"
-    cepzk_assistido |o--o| cepzk_tratamento : "tratamento atual"
-    cepzk_tratamento |o--o| cepzk_tratamento : "proximo"
     cepzk_tratamento ||--o| aca_tratamento : "estende (ACA)"
     aca_distonia ||--o{ aca_tratamento : "classifica"
     aca_queixa ||--o{ aca_tratamento_queixa : "registra"
@@ -57,20 +55,21 @@ Mediúnico).
 Setores de atendimento, cada um pertencente a um departamento
 (ex.: Acolher com Amor, Desobsessão Infantil I).
 
-| Coluna            | Tipo         | Observação        |
-| ----------------- | ------------ | ----------------- |
-| `id`              | `smallserial`| PK                |
-| `nome`            | `text`       | `not null`        |
-| `departamento_id` | `smallint`   | FK → departamento |
+| Coluna                   | Tipo          | Observação        |
+| ------------------------ | ------------- | ----------------- |
+| `id`                     | `smallserial` | PK                |
+| `nome`                   | `text`        | `not null`        |
+| `departamento_id`        | `smallint`    | FK → departamento |
+| `precedencia_tratamento` | `smallint`    | `not null` — prioridade do tratamento (menor = mais prioritário) |
 
 **Mapeamento setor → departamento (seed):**
 
-| Setor                     | Departamento         |
-| ------------------------- | -------------------- |
-| Atendimento Fraterno      | Atendimento Fraterno |
-| Acolher com Amor          | Fluidoterapia        |
-| Desobsessão Infantil I    | Mediúnico            |
-| Desobsessão Infantil II   | Mediúnico            |
+| Setor                   | Departamento         | Prioridade |
+| ----------------------- | -------------------- | ---------- |
+| Atendimento Fraterno    | Atendimento Fraterno | 0          |
+| Desobsessão Infantil I  | Mediúnico            | 1          |
+| Desobsessão Infantil II | Mediúnico            | 1          |
+| Acolher com Amor        | Fluidoterapia        | 10         |
 
 #### `cepzk_horario`
 
@@ -127,28 +126,24 @@ Atendimento Fraterno.
 | `id`                 | `serial`    | PK                                  |
 | `nome_completo`      | `text`      | `not null unique`                   |
 | `entrevistador_id`   | `uuid`      | FK → voluntário (quem entrevistou)  |
-| `tratamento_atual`   | `int`       | FK → tratamento em andamento        |
 | `data_criacao`       | `timestamptz` | `not null default now()`         |
 
 #### `cepzk_tratamento`
 
-Tratamento que o assistido recebe em um setor/horário. Os tratamentos podem
-ser encadeados via `proximo_tratamento` (fila de tratamentos do assistido).
+Tratamento que o assistido recebe em um setor/horário.
 `unique (assistido_id, setor_id)` impede dois tratamentos no mesmo setor para
-o mesmo assistido.
+o mesmo assistido. O `estado` acompanha o ciclo do tratamento — nasce
+`'pendente'` e o voluntário o marca como completo quando o assistido recebe
+alta.
 
-| Coluna               | Tipo       | Observação                       |
-| -------------------- | ---------- | -------------------------------- |
-| `id`                 | `serial`   | PK                               |
-| `assistido_id`       | `int`      | FK → assistido (`on delete cascade`) |
-| `setor_id`           | `smallint` | FK → setor                       |
-| `horario_id`         | `smallint` | FK → horário                     |
-| `obs`                | `text`     | Observações livre                |
-| `proximo_tratamento` | `int`      | FK → tratamento (próximo da fila)|
-
-> **Dependência circular:** `assistido.tratamento_atual → tratamento.id` e
-> `tratamento.assistido_id → assistido.id`. No Postgres, as duas tabelas são
-> criadas primeiro e as FKs são adicionadas depois (migration 001).
+| Coluna         | Tipo       | Observação                            |
+| -------------- | ---------- | ------------------------------------- |
+| `id`           | `serial`   | PK                                    |
+| `assistido_id` | `int`      | FK → assistido (`on delete cascade`)  |
+| `setor_id`     | `smallint` | FK → setor                            |
+| `horario_id`   | `smallint` | FK → horário                          |
+| `obs`          | `text`     | Observações livres                    |
+| `estado`       | `text`     | `not null default 'pendente'`         |
 
 ### Acolher com Amor (ACA)
 

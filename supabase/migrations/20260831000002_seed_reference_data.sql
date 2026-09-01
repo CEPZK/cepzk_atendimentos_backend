@@ -21,15 +21,15 @@ from (values
 ) as v (nome)
 where not exists (select 1 from public.cepzk_horario h where h.nome = v.nome);
 
--- Mapeamento setor -> departamento (definitivo)
-insert into public.cepzk_setor (nome, departamento_id)
-select s.nome, d.id
+-- Mapeamento setor -> departamento (definitivo) + prioridade de cada setor
+insert into public.cepzk_setor (nome, departamento_id, precedencia_tratamento)
+select s.nome, d.id, s.precedencia
 from (values
-    ('Atendimento Fraterno',    'Atendimento Fraterno'),
-    ('Acolher com Amor',        'Fluidoterapia'),
-    ('Desobsessão Infantil I',  'Mediúnico'),
-    ('Desobsessão Infantil II', 'Mediúnico')
-) as s (nome, departamento)
+    ('Atendimento Fraterno',    'Atendimento Fraterno', 0),
+    ('Acolher com Amor',        'Fluidoterapia',        10),
+    ('Desobsessão Infantil I',  'Mediúnico',            1),
+    ('Desobsessão Infantil II', 'Mediúnico',            1)
+) as s (nome, departamento, precedencia)
 join public.cepzk_departamento d on d.nome = s.departamento
 where not exists (select 1 from public.cepzk_setor t where t.nome = s.nome);
 
