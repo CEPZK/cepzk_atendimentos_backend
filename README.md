@@ -31,7 +31,8 @@ mantêm a agenda de sessões de cada assistido, com procedimentos e relatórios.
 │       ├── 20260831000002_seed_reference_data.sql  # Catálogos iniciais
 │       ├── 20260831000003_row_level_security.sql   # RLS
 │       ├── 20260831000004_auth_hooks.sql           # Trigger do sign-up
-│       └── 20260831000005_seed_setor_mediunico.sql # Setor Mediúnico (ajuste)
+│       ├── 20260831000005_seed_setor_mediunico.sql # Setor Mediúnico (ajuste)
+│       └── 20260831000006_fix_setor_departamento_mapping.sql  # Mapeamento setor→departamento
 ├── docs/
 │   ├── banco-de-dados.md    # Documentação do banco (PT-BR)
 │   └── autenticacao.md      # Documentação da autenticação (PT-BR)

@@ -63,9 +63,14 @@ Setores de atendimento, cada um pertencente a um departamento
 | `nome`            | `text`       | `not null`        |
 | `departamento_id` | `smallint`   | FK → departamento |
 
-> ⚠️ **A confirmar:** o mapeamento setor → departamento usado no seed
-> (ex.: Acolher com Amor e Desobsessão Infantil I/II → departamento
-> Mediúnico). Ajuste em `20260831000002_seed_reference_data.sql`.
+**Mapeamento setor → departamento (seed):**
+
+| Setor                     | Departamento         |
+| ------------------------- | -------------------- |
+| Atendimento Fraterno      | Atendimento Fraterno |
+| Acolher com Amor          | Fluidoterapia        |
+| Desobsessão Infantil I    | Mediúnico            |
+| Desobsessão Infantil II   | Mediúnico            |
 
 #### `cepzk_horario`
 
@@ -238,7 +243,7 @@ forma idempotente:
 | Catálogo          | Valores iniciais                                                    |
 | ----------------- | ------------------------------------------------------------------- |
 | Departamentos     | Atendimento Fraterno, Fluidoterapia, Mediúnico                      |
-| Setores           | Atendimento Fraterno, Acolher com Amor, Desobsessão Infantil I/II, Mediúnico |
+| Setores           | Atendimento Fraterno, Acolher com Amor, Desobsessão Infantil I/II   |
 | Horários          | Terça-Feira 20h, Sexta-Feira 19h, Sexta-Feira 19h30, Sábado 9h30    |
 | Distonias         | TEA, Esquizofrenia, Outros                                          |
 | Queixas           | Convulsão, Dificuldade de Comunicação, Dificuldade de Interação Social, Comportamentos Repetitivos, Comportamentos Violentos |
@@ -256,6 +261,7 @@ FKs já permitem o uso imediato.
 | `20260831000003_row_level_security.sql` | RLS + políticas                 |
 | `20260831000004_auth_hooks.sql`  | Trigger de criação do voluntário      |
 | `20260831000005_seed_setor_mediunico.sql` | Setor Mediúnico no seed        |
+| `20260831000006_fix_setor_departamento_mapping.sql` | Mapeamento definitivo setor→departamento |
 
 Para aplicar em um projeto existente, veja
 [README.md → Começando](../README.md#começando).
