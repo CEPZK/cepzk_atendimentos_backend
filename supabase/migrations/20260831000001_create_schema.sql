@@ -26,8 +26,9 @@ create table public.cepzk_setor (
     id              smallserial primary key,
     nome            text not null,
     departamento_id smallint not null references public.cepzk_departamento (id),
-    -- Prioridade do tratamento do setor (menor número = mais prioritário)
-    precedencia_tratamento smallint not null
+    -- Prioridade do tratamento do setor (menor número = mais prioritário);
+    -- null = setor sem prioridade definida
+    precedencia_tratamento smallint
 );
 
 -- Ex.: Terça-Feira 20h, Sexta-Feira 19h, Sábado 9h30

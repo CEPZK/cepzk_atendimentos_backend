@@ -60,7 +60,7 @@ Setores de atendimento, cada um pertencente a um departamento
 | `id`                     | `smallserial` | PK                |
 | `nome`                   | `text`        | `not null`        |
 | `departamento_id`        | `smallint`    | FK → departamento |
-| `precedencia_tratamento` | `smallint`    | `not null` — prioridade do tratamento (menor = mais prioritário) |
+| `precedencia_tratamento` | `smallint`    | Opcional (`null`) — prioridade do tratamento (menor = mais prioritário) |
 
 **Mapeamento setor → departamento (seed):**
 
