@@ -38,10 +38,22 @@ create table public.cepzk_horario (
 -- Voluntários — espelhados 1:1 com auth.users do Supabase Auth
 -- -----------------------------------------------------------------------------
 
+-- Papéis do voluntário. Por ora, coordenador e colaborador têm as mesmas
+-- permissões; a diferenciação entre eles é previsível para o futuro.
+create type public.papel_voluntario as enum ('admin', 'coordenador', 'colaborador');
+
 create table public.cepzk_voluntario (
     -- Mesmo identificador do usuário no Supabase Auth (auth.users.id)
-    id   uuid primary key,
-    nome text not null
+    id           uuid primary key,
+    nome         text not null,
+    -- E-mail do voluntário; o admin o usa para enviar o convite.
+    -- Sincronizado automaticamente com auth.users.
+    email        text not null unique,
+    -- Preenchido pelo próprio voluntário
+    telefone     text,
+    -- Somente 'admin' envia convites e altera papéis
+    papel        public.papel_voluntario not null default 'colaborador',
+    data_criacao timestamptz not null default now()
 );
 
 -- Escala: nos setores/horários em que cada voluntário atua
@@ -62,7 +74,8 @@ create table public.cepzk_assistido (
     -- Voluntário (Atendimento Fraterno) que realizou a entrevista
     entrevistador_id uuid     not null references public.cepzk_voluntario (id),
     -- Tratamento em andamento (FK criada ao final — dependência circular)
-    tratamento_atual int
+    tratamento_atual int,
+    data_criacao     timestamptz not null default now()
 );
 
 create table public.cepzk_tratamento (

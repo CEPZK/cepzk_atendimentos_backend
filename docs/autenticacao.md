@@ -24,18 +24,43 @@ O acesso é **sem senha** e **somente por convite (invite-only)**:
 - **JWT:** expiração padrão de 1 hora. O `id` do usuário no JWT é o mesmo
   `uuid` usado em `cepzk_voluntario.id`.
 
+### Papéis (roles)
+
+Voluntários têm um papel em `cepzk_voluntario.papel`
+(`enum papel_voluntario`):
+
+| Papel         | Permissões (por ora)                              |
+| ------------- | ------------------------------------------------- |
+| `admin`       | Envio de convites e alteração de papéis           |
+| `coordenador` | Igual a colaborador (diferenciação prevista)      |
+| `colaborador` | Uso normal da plataforma — default de todo convite |
+
+- **Somente `admin` pode enviar convites e alterar papéis.** A proteção
+  existe em duas camadas: a Edge Function de convites verifica o papel do
+  chamador (JWT) antes de enviar, e o trigger
+  `on_voluntario_papel_protected` reverte qualquer mudança de `papel`
+  feita por quem não é admin (o `service_role` e a administração local
+  são liberados);
+- O admin define o papel de cada voluntário em `cepzk_voluntario.papel`.
+
 ### Enviando convites (admin)
+
+> Restrito a voluntários com `papel = 'admin'`.
 
 **Pelo Dashboard (sem código):** *Authentication → Users → Invite user* →
 informe o e-mail (e o nome, nos metadados) → o e-mail de convite é
-enviado.
+enviado. (O acesso ao dashboard já é administrativo.)
 
 **Pela aplicação (previsto):** tela de administração que chama uma Edge
 Function com a **service role key** (a API de admin nunca roda no
-frontend):
+frontend). A Edge Function deve **verificar que o usuário autenticado
+(JWT) tem `papel = 'admin'`** antes de enviar o convite:
 
 ```js
 // dentro de uma Edge Function (service role)
+// 1. lê o JWT do request, busca cepzk_voluntario.papel do usuário
+// 2. se papel !== 'admin' -> 403
+// 3. senão:
 const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail({
   email: 'maria@exemplo.com',
   data: { nome: 'Maria da Silva' }, // vira raw_user_meta_data
@@ -125,32 +150,40 @@ conforme as políticas.
 
 `cepzk_voluntario` é um espelho 1:1 de `auth.users`. O registro do voluntário
 é **criado automaticamente no momento do convite** (o `inviteUserByEmail` já
-cria a linha em `auth.users`) e **sincronizado** quando os metadados do
-usuário mudam:
+cria a linha em `auth.users`) e **sincronizado** quando os metadados ou o
+e-mail do usuário mudam:
 
-- `on_auth_user_created` (`after insert`) → cria o voluntário;
-- `on_auth_user_updated` (`after update` de `raw_user_meta_data`) →
-  atualiza o nome.
+- `on_auth_user_created` (`after insert`) → cria o voluntário
+  (com `email` e `nome`);
+- `on_auth_user_updated` (`after update`) → atualiza `nome` e `email`;
+- `on_voluntario_papel_protected` → protege a coluna `papel` (veja
+  [Papéis](#papeis-roles)).
 
-O nome do voluntário vem, nesta ordem:
+Campos:
 
-1. `raw_user_meta_data.nome` — campo `nome` enviado no convite (opção `data`
-   do `inviteUserByEmail`);
-2. `raw_user_meta_data.name`;
-3. parte do e-mail antes do `@`.
+- `nome` — vem, nesta ordem: `raw_user_meta_data.nome` (campo `nome`
+  enviado no convite), `raw_user_meta_data.name`, ou a parte do e-mail
+  antes do `@`;
+- `email` — espelha `auth.users.email` (o admin o usa para reenviar
+  convites);
+- `telefone` — preenchido pelo próprio voluntário na plataforma;
+- `papel` — `admin` / `coordenador` / `colaborador` (default
+  `colaborador`);
+- `data_criacao` — quando o registro foi criado (`default now()`).
 
-### Atualizando o nome
+### Atualizando nome ou e-mail
 
-Quando o voluntário quiser mudar o nome, o frontend atualiza os metadados
-do Auth e o trigger cuida do resto:
+Quando o voluntário quiser mudar o nome ou o e-mail, o frontend atualiza
+os dados do Auth e os triggers cuidam do resto:
 
 ```js
 await supabase.auth.updateUser({ data: { nome: 'Maria S. da Silva' } });
 // cepzk_voluntario.nome é atualizado automaticamente
 ```
 
-> Também é possível corrigir o nome diretamente com um `update` em
-> `cepzk_voluntario` (todo voluntário logado tem acesso — veja RLS abaixo).
+> O `telefone` e o `papel` não vêm do Auth: `telefone` é editado
+> diretamente em `cepzk_voluntario`, e `papel` só pode ser alterado por
+> admin (protegido por trigger).
 
 ## Row Level Security (RLS)
 

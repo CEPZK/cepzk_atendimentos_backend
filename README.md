@@ -86,7 +86,9 @@ link de convite e entra na plataforma. Nos logins seguintes, informa o
 e-mail e recebe um novo magic link. Cadastro próprio está desabilitado —
 só convidados conseguem entrar. O `cepzk_voluntario` é criado
 automaticamente no momento do convite (mesmo `id` do `auth.users`) via
-trigger — veja [docs/autenticacao.md](docs/autenticacao.md).
+trigger. Voluntários têm papéis (`admin`, `coordenador`, `colaborador`);
+somente `admin` envia convites e altera papéis — veja
+[docs/autenticacao.md](docs/autenticacao.md).
 
 ## Banco de dados
 

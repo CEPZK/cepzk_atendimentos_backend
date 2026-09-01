@@ -86,13 +86,23 @@ Horários de atendimento (ex.: Terça-Feira 20h, Sábado 9h30).
 #### `cepzk_voluntario`
 
 Espelho 1:1 do usuário no **Supabase Auth**: o `id` é o mesmo `uuid` de
-`auth.users.id`. O registro é criado automaticamente no sign-up (veja
-[autenticacao.md](autenticacao.md#perfil-do-voluntario)).
+`auth.users.id`. O registro é criado automaticamente no momento do
+convite (veja [autenticacao.md](autenticacao.md#perfil-do-voluntario)).
 
-| Coluna | Tipo   | Observação                     |
-| ------ | ------ | ------------------------------ |
-| `id`   | `uuid` | PK = `auth.users.id`           |
-| `nome` | `text` | `not null`                     |
+| Coluna         | Tipo                 | Observação                                                        |
+| -------------- | -------------------- | ----------------------------------------------------------------- |
+| `id`           | `uuid`               | PK = `auth.users.id`                                              |
+| `nome`         | `text`               | `not null` — sincronizado com o Auth                              |
+| `email`        | `text`               | `not null unique` — o admin usa para enviar o convite. Sincronizado com o Auth |
+| `telefone`     | `text`               | Preenchido pelo próprio voluntário                                |
+| `papel`        | `papel_voluntario`   | `admin` / `coordenador` / `colaborador` (default `colaborador`)   |
+| `data_criacao` | `timestamptz`        | `not null default now()`                                          |
+
+O tipo `papel_voluntario` é um `enum` do Postgres com os três papéis.
+Somente `admin` envia convites e altera papéis — um trigger
+(`on_voluntario_papel_protected`) **reverte** qualquer alteração de
+`papel` feita por quem não é admin (o `service_role` das Edge Functions
+e o dono da tabela, usado na administração local, são liberados).
 
 #### `cepzk_voluntario_setor`
 
@@ -111,12 +121,13 @@ Escala: nos setores/horários em que cada voluntário atua.
 Pessoa assistida, cadastrada pelo entrevistador após a entrevista do
 Atendimento Fraterno.
 
-| Coluna               | Tipo   | Observação                          |
-| -------------------- | ------ | ----------------------------------- |
-| `id`                 | `serial` | PK                                |
-| `nome`               | `text` | `not null unique`                   |
-| `entrevistador_id`   | `uuid` | FK → voluntário (quem entrevistou)  |
-| `tratamento_atual`   | `int`  | FK → tratamento em andamento        |
+| Coluna               | Tipo        | Observação                          |
+| -------------------- | ----------- | ----------------------------------- |
+| `id`                 | `serial`    | PK                                  |
+| `nome`               | `text`      | `not null unique`                   |
+| `entrevistador_id`   | `uuid`      | FK → voluntário (quem entrevistou)  |
+| `tratamento_atual`   | `int`       | FK → tratamento em andamento        |
+| `data_criacao`       | `timestamptz` | `not null default now()`         |
 
 #### `cepzk_tratamento`
 
