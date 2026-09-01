@@ -30,9 +30,7 @@ mantêm a agenda de sessões de cada assistido, com procedimentos e relatórios.
 │       ├── 20260831000001_create_schema.sql        # Esquema do banco
 │       ├── 20260831000002_seed_reference_data.sql  # Catálogos iniciais
 │       ├── 20260831000003_row_level_security.sql   # RLS
-│       ├── 20260831000004_auth_hooks.sql           # Trigger do sign-up
-│       ├── 20260831000005_seed_setor_mediunico.sql # Setor Mediúnico (ajuste)
-│       └── 20260831000006_fix_setor_departamento_mapping.sql  # Mapeamento setor→departamento
+│       └── 20260831000004_auth_hooks.sql           # Triggers do Supabase Auth
 ├── docs/
 │   ├── banco-de-dados.md    # Documentação do banco (PT-BR)
 │   └── autenticacao.md      # Documentação da autenticação (PT-BR)
@@ -82,9 +80,11 @@ O ambiente local aplica as migrations e o `seed.sql` automaticamente.
 
 ## Autenticação
 
-Sign-up com e-mail e senha via Supabase Auth. Ao se cadastrar, o voluntário é
-criado automaticamente em `cepzk_voluntario` (mesmo `id` do `auth.users`)
-através de um trigger — veja [docs/autenticacao.md](docs/autenticacao.md).
+Acesso **sem senha**: o voluntário informa o e-mail e entra pelo **magic
+link** enviado por e-mail (Supabase Auth). No primeiro clique, o usuário é
+criado automaticamente e o voluntário aparece em `cepzk_voluntario`
+(mesmo `id` do `auth.users`) via trigger — veja
+[docs/autenticacao.md](docs/autenticacao.md).
 
 ## Banco de dados
 

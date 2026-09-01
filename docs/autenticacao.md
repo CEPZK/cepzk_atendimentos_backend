@@ -5,15 +5,58 @@ centro).
 
 ## Como funciona
 
-- **Métodos habilitados:** e-mail + senha e magic link (confirmação por
-  e-mail desabilitada por padrão — o login é imediato; ajuste em
-  *Authentication → Providers* no dashboard conforme preferir).
-- **Sign-up aberto:** habilitado por padrão (`enable_signup = true` no
-  `supabase/config.toml`). Se quiser apenas cadastro manual pela
-  administração, desative o sign-up no dashboard e crie os usuários em
-  *Authentication → Users*.
+O acesso ao sistema é **sem senha**: o voluntário informa o e-mail e recebe
+um **magic link** (link mágico) por e-mail. Ao clicar no link, ele entra no
+sistema.
+
+- **Primeiro acesso (voluntário novo):** o Supabase Auth cria o usuário
+  automaticamente no primeiro clique no link (sign-up automático do fluxo)
+  e o trigger cria o `cepzk_voluntario` correspondente.
+- **Acessos seguintes:** o link autentica o usuário existente.
+- **Senha:** não existe em nenhum momento. Como o usuário é criado via
+  magic link, ele nunca tem senha, e login por e-mail/senha simplesmente
+  não funciona para esses usuários. A interface **não deve oferecer campo
+  de senha**.
 - **JWT:** expiração padrão de 1 hora. O `id` do usuário no JWT é o mesmo
   `uuid` usado em `cepzk_voluntario.id`.
+
+### Fluxo de login (frontend)
+
+```js
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// voluntário informa e-mail (e nome, para cadastro/sincronização)
+const { data, error } = await supabase.auth.signInWithOtp({
+  email: 'maria@exemplo.com',
+  options: {
+    // deve estar na allowlist de redirect URLs do projeto
+    emailRedirectTo: 'https://SEU-APP/auth/callback',
+    data: { nome: 'Maria da Silva' }, // vira raw_user_meta_data
+  },
+});
+// fluxo: e-mail chega → voluntário clica no link → cai na URL de callback
+// com o código → supabase.auth.exchangeCodeForSession() cria a sessão
+```
+
+> O método se chama `signInWithOtp`, mas envia um **magic link** por
+> padrão (o código numérico OTP é uma variação feita via template de
+> e-mail — o padrão do sistema é o link).
+
+### Configuração no projeto (dashboard)
+
+- **Authentication → URL Configuration**: defina a *Site URL* e adicione a
+  URL de callback da aplicação (ex.: `https://seu-app.com/auth/callback`) —
+  são as **únicas** URLs para onde o magic link pode redirecionar;
+- **Authentication → Providers → Email**: mantenha o provider de e-mail
+  habilitado (o magic link vem ativo por padrão);
+- **(recomendado em produção) Authentication → SMTP Settings**: configure
+  um provedor de e-mail próprio (ex.: Resend, SendGrid) para entrega
+  confiável dos links;
+- **Authentication → Users**: novos voluntários aparecem aqui
+  automaticamente no primeiro login (criação manual também é possível,
+  para contas de administração).
 
 ## Como a aplicação acessa o banco
 
@@ -49,35 +92,31 @@ conforme as políticas.
 ## Perfil do voluntário
 
 `cepzk_voluntario` é um espelho 1:1 de `auth.users`. O registro do voluntário
-é criado **automaticamente no sign-up** por um trigger (`after insert on
-auth.users` → `public.handle_new_user()`):
+é **criado automaticamente no primeiro login** (quando o usuário é criado
+em `auth.users`) e **sincronizado** quando os metadados do usuário mudam:
 
-```sql
-create trigger on_auth_user_created
-    after insert on auth.users
-    for each row
-    execute function public.handle_new_user();
-```
+- `on_auth_user_created` (`after insert`) → cria o voluntário;
+- `on_auth_user_updated` (`after update` de `raw_user_meta_data`) →
+  atualiza o nome.
 
 O nome do voluntário vem, nesta ordem:
 
-1. `raw_user_meta_data.nome` — campo `nome` enviado no sign-up;
+1. `raw_user_meta_data.nome` — campo `nome` enviado no login (opção `data`
+   do `signInWithOtp`);
 2. `raw_user_meta_data.name`;
 3. parte do e-mail antes do `@`.
 
-### Exemplo de sign-up (frontend)
+### Atualizando o nome
+
+Quando o voluntário quiser mudar o nome, o frontend atualiza os metadados
+do Auth e o trigger cuida do resto:
 
 ```js
-const { data, error } = await supabase.auth.signUp({
-  email: 'maria@exemplo.com',
-  password: 'senha-forte',
-  options: { data: { nome: 'Maria da Silva' } },
-});
+await supabase.auth.updateUser({ data: { nome: 'Maria S. da Silva' } });
+// cepzk_voluntario.nome é atualizado automaticamente
 ```
 
-Após o sign-up, já existe a linha correspondente em `cepzk_voluntario`.
-
-> O nome pode ser corrigido depois com um simples `update` em
+> Também é possível corrigir o nome diretamente com um `update` em
 > `cepzk_voluntario` (todo voluntário logado tem acesso — veja RLS abaixo).
 
 ## Row Level Security (RLS)
@@ -117,6 +156,8 @@ tabelas correspondentes.
   backend/processos administrativos;
 - O frontend deve usar a **anon key** + JWT do usuário logado
   (`supabase.auth.getSession()`);
+- O formulário de login deve ter **apenas o campo de e-mail** (e nome, no
+  cadastro) — nenhum campo de senha;
 - Em caso de desligamento de um voluntário: desabilite/exclua o usuário em
   *Authentication → Users*. A exclusão do `auth.users` remove o login; o
   registro em `cepzk_voluntario` (e o histórico em assistidos/relatórios)

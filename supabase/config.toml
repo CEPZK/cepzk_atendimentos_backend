@@ -4,5 +4,13 @@
 project_id = "cepzk_atendimentos"
 
 [auth]
+# O fluxo de login do sistema é magic link (e-mail, sem senha), que já vem
+# habilitado por padrão. O site_url abaixo define a base para o redirecionamento
+# após o clique no link — ajuste para o ambiente da aplicação.
 site_url = "http://localhost:3000"
 enable_signup = true
+
+[auth.email]
+# Sem confirmação de e-mail em etapa separada: o clique no magic link
+# autentica o usuário imediatamente.
+enable_confirmations = false
