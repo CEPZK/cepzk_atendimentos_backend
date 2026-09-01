@@ -19,8 +19,11 @@
 -- Migração de dados: as combinações já existentes em escala/tratamento são
 -- preservadas (viram atendimentos) para que nenhum registro se perca.
 --
--- Esta migration também encerra a regra "um tratamento por setor": o
--- assistido pode ter tratamentos no mesmo setor em horários diferentes.
+-- Esta migration também:
+--   * encerra a regra "um tratamento por setor" (o assistido pode ter
+--     tratamentos no mesmo setor em horários diferentes);
+--   * move a precedência de `cepzk_setor.precedencia_tratamento` para
+--     `cepzk_atendimento.precedencia`, preservando os valores atuais.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -31,6 +34,9 @@ create table public.cepzk_atendimento (
     id         smallserial primary key,
     setor_id   smallint not null references public.cepzk_setor (id),
     horario_id smallint not null references public.cepzk_horario (id),
+    -- Prioridade do tratamento neste atendimento (menor = mais prioritário);
+    -- null = sem prioridade definida. Herdada de cepzk_setor na migração.
+    precedencia smallint,
     -- Um setor não repete o mesmo horário
     unique (setor_id, horario_id)
 );
@@ -55,8 +61,8 @@ where not exists (select 1 from public.cepzk_horario h where h.nome = v.nome);
 -- 3. Atendimentos oferecidos (idempotente)
 -- -----------------------------------------------------------------------------
 
-insert into public.cepzk_atendimento (setor_id, horario_id)
-select s.id, h.id
+insert into public.cepzk_atendimento (setor_id, horario_id, precedencia)
+select s.id, h.id, s.precedencia_tratamento
 from (values
     (1, 'Atendimento Fraterno',    'Terça-Feira 8h'),
     (2, 'Atendimento Fraterno',    'Sexta-Feira 19h'),
@@ -75,20 +81,32 @@ order by v.ordem;
 
 -- Preserva combinações já em uso que não estejam na lista acima
 -- (bancos com dados anteriores a esta migration)
-insert into public.cepzk_atendimento (setor_id, horario_id)
-select distinct x.setor_id, x.horario_id
+insert into public.cepzk_atendimento (setor_id, horario_id, precedencia)
+select distinct x.setor_id, x.horario_id, s.precedencia_tratamento
 from (
     select setor_id, horario_id from public.cepzk_escala
     union
     select setor_id, horario_id from public.cepzk_tratamento
 ) as x
+join public.cepzk_setor s on s.id = x.setor_id
 where not exists (
     select 1 from public.cepzk_atendimento a
     where a.setor_id = x.setor_id and a.horario_id = x.horario_id
 );
 
 -- -----------------------------------------------------------------------------
--- 4. cepzk_escala — (voluntario_id, setor_id, horario_id) → (voluntario_id, atendimento_id)
+-- 4. A precedência passa a ser do atendimento, não do setor
+--
+-- Os valores acabaram de ser copiados de cepzk_setor.precedencia_tratamento
+-- (todo atendimento herdou a precedência do seu setor), então a coluna antiga
+-- pode sair.
+-- -----------------------------------------------------------------------------
+
+alter table public.cepzk_setor
+    drop column if exists precedencia_tratamento;
+
+-- -----------------------------------------------------------------------------
+-- 5. cepzk_escala — (voluntario_id, setor_id, horario_id) → (voluntario_id, atendimento_id)
 -- -----------------------------------------------------------------------------
 
 alter table public.cepzk_escala
@@ -128,7 +146,7 @@ create index cepzk_escala_atendimento_id_idx
     on public.cepzk_escala (atendimento_id);
 
 -- -----------------------------------------------------------------------------
--- 5. cepzk_tratamento — (setor_id, horario_id) → atendimento_id
+-- 6. cepzk_tratamento — (setor_id, horario_id) → atendimento_id
 --
 -- Não há mais a regra "um tratamento por setor": o assistido pode ter
 -- tratamentos no mesmo setor em horários diferentes. O `unique` agora é por
@@ -162,7 +180,7 @@ create index cepzk_tratamento_atendimento_id_idx
     on public.cepzk_tratamento (atendimento_id);
 
 -- -----------------------------------------------------------------------------
--- 6. RLS do novo catálogo (mesma política da migration 003)
+-- 7. RLS do novo catálogo (mesma política da migration 003)
 -- -----------------------------------------------------------------------------
 
 alter table public.cepzk_atendimento enable row level security;

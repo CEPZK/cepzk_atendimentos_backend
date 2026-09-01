@@ -60,16 +60,15 @@ Setores de atendimento, cada um pertencente a um departamento
 | `id`                     | `smallserial` | PK                |
 | `nome`                   | `text`        | `not null`        |
 | `departamento_id`        | `smallint`    | FK → departamento |
-| `precedencia_tratamento` | `smallint`    | Opcional (`null`) — prioridade do tratamento (menor = mais prioritário) |
 
 **Mapeamento setor → departamento (seed):**
 
-| Setor                   | Departamento         | Prioridade |
-| ----------------------- | -------------------- | ---------- |
-| Atendimento Fraterno    | Atendimento Fraterno | 0          |
-| Desobsessão Infantil I  | Mediúnico            | 1          |
-| Desobsessão Infantil II | Mediúnico            | 1          |
-| Acolher com Amor        | Fluidoterapia        | 10         |
+| Setor                   | Departamento         |
+| ----------------------- | -------------------- |
+| Atendimento Fraterno    | Atendimento Fraterno |
+| Desobsessão Infantil I  | Mediúnico            |
+| Desobsessão Infantil II | Mediúnico            |
+| Acolher com Amor        | Fluidoterapia        |
 
 #### `cepzk_horario`
 
@@ -87,23 +86,28 @@ setor + horário que realmente acontece. É o que escala e tratamento
 referenciam — assim não é possível registrar uma combinação inexistente
 (ex.: Acolher com Amor na Terça-Feira 8h).
 
-| Coluna       | Tipo          | Observação                        |
-| ------------ | ------------- | --------------------------------- |
-| `id`         | `smallserial` | PK                                |
-| `setor_id`   | `smallint`    | FK → setor                        |
-| `horario_id` | `smallint`    | FK → horário                      |
+| Coluna        | Tipo          | Observação                        |
+| ------------- | ------------- | --------------------------------- |
+| `id`          | `smallserial` | PK                                |
+| `setor_id`    | `smallint`    | FK → setor                        |
+| `horario_id`  | `smallint`    | FK → horário                      |
+| `precedencia` | `smallint`    | Opcional (`null`) — prioridade do tratamento (menor = mais prioritário) |
 
 `unique (setor_id, horario_id)` impede o mesmo horário repetido no setor.
 
+A `precedencia` era `cepzk_setor.precedencia_tratamento` e passou a viver
+aqui: assim dois horários do mesmo setor podem ter prioridades diferentes.
+Na migração, cada atendimento herdou a precedência do seu setor.
+
 **Atendimentos (seed):**
 
-| Setor                   | Horário           |
-| ----------------------- | ----------------- |
-| Atendimento Fraterno    | Terça-Feira 8h    |
-| Atendimento Fraterno    | Sexta-Feira 19h   |
-| Desobsessão Infantil I  | Sexta-Feira 19h30 |
-| Desobsessão Infantil II | Sexta-Feira 19h30 |
-| Acolher com Amor        | Sábado 9h30       |
+| Setor                   | Horário           | Precedência |
+| ----------------------- | ----------------- | ----------- |
+| Atendimento Fraterno    | Terça-Feira 8h    | 0           |
+| Atendimento Fraterno    | Sexta-Feira 19h   | 0           |
+| Desobsessão Infantil I  | Sexta-Feira 19h30 | 1           |
+| Desobsessão Infantil II | Sexta-Feira 19h30 | 1           |
+| Acolher com Amor        | Sábado 9h30       | 10          |
 
 
 ### Voluntários
@@ -280,7 +284,7 @@ forma idempotente:
 | Departamentos     | Atendimento Fraterno, Fluidoterapia, Mediúnico                      |
 | Setores           | Atendimento Fraterno, Acolher com Amor, Desobsessão Infantil I/II   |
 | Horários          | Terça-Feira 8h, Terça-Feira 20h, Sexta-Feira 19h, Sexta-Feira 19h30, Sábado 9h30 |
-| Atendimentos      | AF Terça-Feira 8h, AF Sexta-Feira 19h, DI I e DI II Sexta-Feira 19h30, ACA Sábado 9h30 |
+| Atendimentos      | AF Terça-Feira 8h (0), AF Sexta-Feira 19h (0), DI I e DI II Sexta-Feira 19h30 (1), ACA Sábado 9h30 (10) — entre parênteses, a precedência |
 | Distonias         | TEA, Esquizofrenia, Outros                                          |
 | Queixas           | Convulsão, Dificuldade de Comunicação, Dificuldade de Interação Social, Comportamentos Repetitivos, Comportamentos Violentos |
 | Procedimentos     | TEA Geral, Distonias Mentais Geral, Esquizofrenia, Convulsões       |
@@ -298,10 +302,10 @@ FKs já permitem o uso imediato.
 | Arquivo                          | Conteúdo                              |
 | -------------------------------- | ------------------------------------- |
 | `20260831000001_create_schema.sql` | Tabelas, enum `papel_voluntario`, FKs e índices |
-| `20260831000002_seed_reference_data.sql` | Dados de referência (inclui precedência dos setores) |
+| `20260831000002_seed_reference_data.sql` | Dados de referência (catálogos iniciais) |
 | `20260831000003_row_level_security.sql` | RLS + políticas                 |
 | `20260831000004_auth_hooks.sql`  | Triggers de criação/sincronização do voluntário |
-| `20260901000005_create_atendimento.sql` | Catálogo `cepzk_atendimento` + seed; escala e tratamento passam a usar `atendimento_id` (migra os dados existentes) |
+| `20260901000005_create_atendimento.sql` | Catálogo `cepzk_atendimento` + seed; escala e tratamento passam a usar `atendimento_id`; precedência sai do setor (migra os dados existentes) |
 
 > A `005` preserva o histórico: toda combinação setor + horário já usada em
 > `cepzk_escala`/`cepzk_tratamento` vira um atendimento antes das colunas
