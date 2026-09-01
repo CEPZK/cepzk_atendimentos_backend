@@ -46,6 +46,8 @@ create table public.cepzk_voluntario (
     -- Mesmo identificador do usuário no Supabase Auth (auth.users.id)
     id           uuid primary key,
     nome         text not null,
+    -- Sobrenome do voluntário (opcional)
+    sobrenome    text,
     -- E-mail do voluntário; o admin o usa para enviar o convite.
     -- Sincronizado automaticamente com auth.users.
     email        text not null unique,
@@ -57,7 +59,7 @@ create table public.cepzk_voluntario (
 );
 
 -- Escala: nos setores/horários em que cada voluntário atua
-create table public.cepzk_voluntario_setor (
+create table public.cepzk_escala (
     voluntario_id uuid     not null references public.cepzk_voluntario (id) on delete cascade,
     setor_id      smallint not null references public.cepzk_setor (id),
     horario_id    smallint not null references public.cepzk_horario (id),
@@ -70,7 +72,7 @@ create table public.cepzk_voluntario_setor (
 
 create table public.cepzk_assistido (
     id               serial   primary key,
-    nome             text     not null unique,
+    nome_completo    text     not null unique,
     -- Voluntário (Atendimento Fraterno) que realizou a entrevista
     entrevistador_id uuid     not null references public.cepzk_voluntario (id),
     -- Tratamento em andamento (FK criada ao final — dependência circular)
@@ -153,7 +155,8 @@ create table public.aca_relatorio (
     sessao_id    int    not null references public.aca_sessao (id) on delete cascade,
     ponte_id     uuid   not null references public.cepzk_voluntario (id),
     dirigente_id uuid   not null references public.cepzk_voluntario (id),
-    obs          text
+    obs          text,
+    data_criacao timestamptz not null default now()
 );
 
 -- -----------------------------------------------------------------------------
@@ -163,11 +166,11 @@ create table public.aca_relatorio (
 create index cepzk_setor_departamento_id_idx
     on public.cepzk_setor (departamento_id);
 
-create index cepzk_voluntario_setor_setor_id_idx
-    on public.cepzk_voluntario_setor (setor_id);
+create index cepzk_escala_setor_id_idx
+    on public.cepzk_escala (setor_id);
 
-create index cepzk_voluntario_setor_horario_id_idx
-    on public.cepzk_voluntario_setor (horario_id);
+create index cepzk_escala_horario_id_idx
+    on public.cepzk_escala (horario_id);
 
 create index cepzk_assistido_entrevistador_id_idx
     on public.cepzk_assistido (entrevistador_id);

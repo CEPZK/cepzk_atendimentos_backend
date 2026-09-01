@@ -164,6 +164,7 @@ Campos:
 - `nome` — vem, nesta ordem: `raw_user_meta_data.nome` (campo `nome`
   enviado no convite), `raw_user_meta_data.name`, ou a parte do e-mail
   antes do `@`;
+- `sobrenome` — opcional, preenchido pelo próprio voluntário;
 - `email` — espelha `auth.users.email` (o admin o usa para reenviar
   convites);
 - `telefone` — preenchido pelo próprio voluntário na plataforma;
@@ -207,7 +208,7 @@ onde todos os voluntários da casa são confiáveis.
 específicas por feature, por exemplo:
 
 - voluntário só **altera** sessões e relatórios dos setores em que atua
-  (consultando `cepzk_voluntario_setor`);
+  (consultando `cepzk_escala`);
 - catálogos (`cepzk_departamento`, `cepzk_setor`, `cepzk_horario`,
   `aca_distonia`, `aca_queixa`, `aca_procedimento`) em **somente leitura**;
 - assistidos só podem ser **alterados** por quem atua no Atendimento

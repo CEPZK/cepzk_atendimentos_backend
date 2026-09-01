@@ -20,9 +20,9 @@ erDiagram
     cepzk_departamento ||--o{ cepzk_setor : "contém"
     cepzk_setor ||--o{ cepzk_tratamento : "oferece"
     cepzk_horario ||--o{ cepzk_tratamento : "agenda"
-    cepzk_voluntario ||--o{ cepzk_voluntario_setor : "atua em"
-    cepzk_setor ||--o{ cepzk_voluntario_setor : "com voluntarios"
-    cepzk_horario ||--o{ cepzk_voluntario_setor : "nestes horarios"
+    cepzk_voluntario ||--o{ cepzk_escala : "atua em"
+    cepzk_setor ||--o{ cepzk_escala : "com voluntarios"
+    cepzk_horario ||--o{ cepzk_escala : "nestes horarios"
     cepzk_voluntario ||--o{ cepzk_assistido : "entrevista"
     cepzk_assistido ||--o{ cepzk_tratamento : "recebe"
     cepzk_assistido |o--o| cepzk_tratamento : "tratamento atual"
@@ -93,6 +93,7 @@ convite (veja [autenticacao.md](autenticacao.md#perfil-do-voluntario)).
 | -------------- | -------------------- | ----------------------------------------------------------------- |
 | `id`           | `uuid`               | PK = `auth.users.id`                                              |
 | `nome`         | `text`               | `not null` — sincronizado com o Auth                              |
+| `sobrenome`    | `text`               | Opcional — preenchido pelo próprio voluntário                     |
 | `email`        | `text`               | `not null unique` — o admin usa para enviar o convite. Sincronizado com o Auth |
 | `telefone`     | `text`               | Preenchido pelo próprio voluntário                                |
 | `papel`        | `papel_voluntario`   | `admin` / `coordenador` / `colaborador` (default `colaborador`)   |
@@ -104,7 +105,7 @@ Somente `admin` envia convites e altera papéis — um trigger
 `papel` feita por quem não é admin (o `service_role` das Edge Functions
 e o dono da tabela, usado na administração local, são liberados).
 
-#### `cepzk_voluntario_setor`
+#### `cepzk_escala`
 
 Escala: nos setores/horários em que cada voluntário atua.
 
@@ -124,7 +125,7 @@ Atendimento Fraterno.
 | Coluna               | Tipo        | Observação                          |
 | -------------------- | ----------- | ----------------------------------- |
 | `id`                 | `serial`    | PK                                  |
-| `nome`               | `text`      | `not null unique`                   |
+| `nome_completo`      | `text`      | `not null unique`                   |
 | `entrevistador_id`   | `uuid`      | FK → voluntário (quem entrevistou)  |
 | `tratamento_atual`   | `int`       | FK → tratamento em andamento        |
 | `data_criacao`       | `timestamptz` | `not null default now()`         |
@@ -222,13 +223,14 @@ Procedimentos realizados em cada sessão (N:M).
 
 Relatório de cada sessão, com os voluntários responsáveis.
 
-| Coluna         | Type   | Observação                |
-| -------------- | ------ | ------------------------- |
-| `id`           | `serial` | PK                      |
-| `sessao_id`    | `int`  | FK → sessão (`on delete cascade`) |
-| `ponte_id`     | `uuid` | FK → voluntário (médium/ponte) |
-| `dirigente_id` | `uuid` | FK → voluntário (dirigente da sessão) |
-| `obs`          | `text` | Observações do relatório  |
+| Coluna         | Tipo        | Observação                |
+| -------------- | ----------- | ------------------------- |
+| `id`           | `serial`    | PK                        |
+| `sessao_id`    | `int`       | FK → sessão (`on delete cascade`) |
+| `ponte_id`     | `uuid`      | FK → voluntário (médium/ponte) |
+| `dirigente_id` | `uuid`      | FK → voluntário (dirigente da sessão) |
+| `obs`          | `text`      | Observações do relatório  |
+| `data_criacao` | `timestamptz` | `not null default now()` |
 
 ## Convenções
 
@@ -237,7 +239,7 @@ Relatório de cada sessão, com os voluntários responsáveis.
   usuário do Auth.
 - **Cascates:** excluir um assistido remove em cascata seus tratamentos e a
   estrutura ACA correspondente (extensão, queixas, sessões, relatórios).
-  Excluir um voluntário remove sua escala (`cepzk_voluntario_setor`). As FKs
+  Excluir um voluntário remove sua escala (`cepzk_escala`). As FKs
   que apontam para voluntários em dados transacionais (entrevistador, ponte,
   dirigente) **não** fazem cascade — a exclusão falha enquanto houver
   referências (preserva histórico).

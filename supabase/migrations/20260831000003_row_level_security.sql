@@ -11,7 +11,7 @@
 --
 -- Próximos refinamentos (conforme as features forem implementadas):
 --   * voluntário só altera sessões/relatórios dos setores em que atua
---     (via cepzk_voluntario_setor);
+--     (via cepzk_escala);
 --   * catálogos (departamento, setor, horário, aca_distonia, aca_queixa,
 --     aca_procedimento) somente leitura;
 --   * assistidos só podem ser alterados por quem atua no Atendimento Fraterno.
@@ -25,7 +25,7 @@ declare
         'public.cepzk_setor',
         'public.cepzk_horario',
         'public.cepzk_voluntario',
-        'public.cepzk_voluntario_setor',
+        'public.cepzk_escala',
         'public.cepzk_assistido',
         'public.cepzk_tratamento',
         'public.aca_distonia',
