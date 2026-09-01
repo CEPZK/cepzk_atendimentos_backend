@@ -8,7 +8,7 @@ CEPZK, hospedado no [Supabase](https://supabase.com).
 O banco é dividido em dois domínios:
 
 - **`cepzk_*`** — estrutura geral: departamentos, setores, horários,
-  voluntários, assistidos e tratamentos;
+  atendimentos, voluntários, assistidos e tratamentos;
 - **`aca_*`** — extensões específicas do tratamento **Acolher com Amor
   (ACA)**: distonias, queixas, procedimentos, agenda de sessões e
   relatórios.
@@ -18,11 +18,11 @@ O banco é dividido em dois domínios:
 ```mermaid
 erDiagram
     cepzk_departamento ||--o{ cepzk_setor : "contém"
-    cepzk_setor ||--o{ cepzk_tratamento : "oferece"
-    cepzk_horario ||--o{ cepzk_tratamento : "agenda"
+    cepzk_setor ||--o{ cepzk_atendimento : "oferece"
+    cepzk_horario ||--o{ cepzk_atendimento : "acontece em"
     cepzk_voluntario ||--o{ cepzk_escala : "atua em"
-    cepzk_setor ||--o{ cepzk_escala : "com voluntarios"
-    cepzk_horario ||--o{ cepzk_escala : "nestes horarios"
+    cepzk_atendimento ||--o{ cepzk_escala : "com voluntarios"
+    cepzk_atendimento ||--o{ cepzk_tratamento : "atende"
     cepzk_voluntario ||--o{ cepzk_assistido : "entrevista"
     cepzk_assistido ||--o{ cepzk_tratamento : "recebe"
     cepzk_tratamento ||--o| aca_tratamento : "estende (ACA)"
@@ -60,25 +60,55 @@ Setores de atendimento, cada um pertencente a um departamento
 | `id`                     | `smallserial` | PK                |
 | `nome`                   | `text`        | `not null`        |
 | `departamento_id`        | `smallint`    | FK → departamento |
-| `precedencia_tratamento` | `smallint`    | Opcional (`null`) — prioridade do tratamento (menor = mais prioritário) |
 
 **Mapeamento setor → departamento (seed):**
 
-| Setor                   | Departamento         | Prioridade |
-| ----------------------- | -------------------- | ---------- |
-| Atendimento Fraterno    | Atendimento Fraterno | 0          |
-| Desobsessão Infantil I  | Mediúnico            | 1          |
-| Desobsessão Infantil II | Mediúnico            | 1          |
-| Acolher com Amor        | Fluidoterapia        | 10         |
+| Setor                   | Departamento         |
+| ----------------------- | -------------------- |
+| Atendimento Fraterno    | Atendimento Fraterno |
+| Desobsessão Infantil I  | Mediúnico            |
+| Desobsessão Infantil II | Mediúnico            |
+| Acolher com Amor        | Fluidoterapia        |
 
 #### `cepzk_horario`
 
-Horários de atendimento (ex.: Terça-Feira 20h, Sábado 9h30).
+Horários de atendimento (ex.: Terça-Feira 8h, Sábado 9h30).
 
 | Coluna | Tipo          | Observação |
 | ------ | ------------- | ---------- |
 | `id`   | `smallserial` | PK         |
 | `nome` | `text`        | `not null` |
+
+#### `cepzk_atendimento`
+
+**Atendimentos oferecidos pela casa**: cada linha é uma combinação
+setor + horário que realmente acontece. É o que escala e tratamento
+referenciam — assim não é possível registrar uma combinação inexistente
+(ex.: Acolher com Amor na Terça-Feira 8h).
+
+| Coluna        | Tipo          | Observação                        |
+| ------------- | ------------- | --------------------------------- |
+| `id`          | `smallserial` | PK                                |
+| `setor_id`    | `smallint`    | FK → setor                        |
+| `horario_id`  | `smallint`    | FK → horário                      |
+| `precedencia` | `smallint`    | Opcional (`null`) — prioridade do tratamento (menor = mais prioritário) |
+
+`unique (setor_id, horario_id)` impede o mesmo horário repetido no setor.
+
+A `precedencia` era `cepzk_setor.precedencia_tratamento` e passou a viver
+aqui: assim dois horários do mesmo setor podem ter prioridades diferentes.
+Na migração, cada atendimento herdou a precedência do seu setor.
+
+**Atendimentos (seed):**
+
+| Setor                   | Horário           | Precedência |
+| ----------------------- | ----------------- | ----------- |
+| Atendimento Fraterno    | Terça-Feira 8h    | 0           |
+| Atendimento Fraterno    | Sexta-Feira 19h   | 0           |
+| Desobsessão Infantil I  | Sexta-Feira 19h30 | 1           |
+| Desobsessão Infantil II | Sexta-Feira 19h30 | 1           |
+| Acolher com Amor        | Sábado 9h30       | 10          |
+
 
 ### Voluntários
 
@@ -106,13 +136,12 @@ e o dono da tabela, usado na administração local, são liberados).
 
 #### `cepzk_escala`
 
-Escala: nos setores/horários em que cada voluntário atua.
+Escala: os atendimentos (setor + horário) em que cada voluntário atua.
 
-| Coluna        | Tipo     | Observação                 |
-| ------------- | -------- | -------------------------- |
-| `voluntario_id` | `uuid` | FK → voluntário (PK)       |
-| `setor_id`    | `smallint` | FK → setor (PK)          |
-| `horario_id`  | `smallint` | FK → horário (PK)        |
+| Coluna           | Tipo       | Observação             |
+| ---------------- | ---------- | ---------------------- |
+| `voluntario_id`  | `uuid`     | FK → voluntário (PK)   |
+| `atendimento_id` | `smallint` | FK → atendimento (PK)  |
 
 ### Assistidos e tratamentos
 
@@ -130,20 +159,22 @@ Atendimento Fraterno.
 
 #### `cepzk_tratamento`
 
-Tratamento que o assistido recebe em um setor/horário.
-`unique (assistido_id, setor_id)` impede dois tratamentos no mesmo setor para
-o mesmo assistido. O `estado` acompanha o ciclo do tratamento — nasce
-`'pendente'` e o voluntário o marca como completo quando o assistido recebe
-alta.
+Tratamento que o assistido recebe em um atendimento (setor + horário).
+O `estado` acompanha o ciclo do tratamento — nasce `'pendente'` e o
+voluntário o marca como completo quando o assistido recebe alta.
 
-| Coluna         | Tipo       | Observação                            |
-| -------------- | ---------- | ------------------------------------- |
-| `id`           | `serial`   | PK                                    |
-| `assistido_id` | `int`      | FK → assistido (`on delete cascade`)  |
-| `setor_id`     | `smallint` | FK → setor                            |
-| `horario_id`   | `smallint` | FK → horário                          |
-| `obs`          | `text`     | Observações livres                    |
-| `estado`       | `text`     | `not null default 'pendente'`         |
+| Coluna           | Tipo       | Observação                            |
+| ---------------- | ---------- | ------------------------------------- |
+| `id`             | `serial`   | PK                                    |
+| `assistido_id`   | `int`      | FK → assistido (`on delete cascade`)  |
+| `atendimento_id` | `smallint` | FK → atendimento                      |
+| `obs`            | `text`     | Observações livres                    |
+| `estado`         | `text`     | `not null default 'pendente'`         |
+
+`unique (assistido_id, atendimento_id)` evita o mesmo assistido duplicado
+no mesmo atendimento. **Não** há restrição por setor: o assistido pode ter
+tratamentos no mesmo setor em horários diferentes.
+
 
 ### Acolher com Amor (ACA)
 
@@ -252,10 +283,16 @@ forma idempotente:
 | ----------------- | ------------------------------------------------------------------- |
 | Departamentos     | Atendimento Fraterno, Fluidoterapia, Mediúnico                      |
 | Setores           | Atendimento Fraterno, Acolher com Amor, Desobsessão Infantil I/II   |
-| Horários          | Terça-Feira 20h, Sexta-Feira 19h, Sexta-Feira 19h30, Sábado 9h30    |
+| Horários          | Terça-Feira 8h, Terça-Feira 20h, Sexta-Feira 19h, Sexta-Feira 19h30, Sábado 9h30 |
+| Atendimentos      | AF Terça-Feira 8h (0), AF Sexta-Feira 19h (0), DI I e DI II Sexta-Feira 19h30 (1), ACA Sábado 9h30 (10) — entre parênteses, a precedência |
 | Distonias         | TEA, Esquizofrenia, Outros                                          |
 | Queixas           | Convulsão, Dificuldade de Comunicação, Dificuldade de Interação Social, Comportamentos Repetitivos, Comportamentos Violentos |
 | Procedimentos     | TEA Geral, Distonias Mentais Geral, Esquizofrenia, Convulsões       |
+
+O horário `Terça-Feira 8h` e os atendimentos vêm da migration
+`20260901000005_create_atendimento.sql`; os demais catálogos, da `002`.
+`Terça-Feira 20h` permanece no catálogo de horários, hoje sem atendimento
+vinculado.
 
 Novos valores podem ser inseridos diretamente pela aplicação ou SQL — as
 FKs já permitem o uso imediato.
@@ -265,9 +302,15 @@ FKs já permitem o uso imediato.
 | Arquivo                          | Conteúdo                              |
 | -------------------------------- | ------------------------------------- |
 | `20260831000001_create_schema.sql` | Tabelas, enum `papel_voluntario`, FKs e índices |
-| `20260831000002_seed_reference_data.sql` | Dados de referência (inclui precedência dos setores) |
+| `20260831000002_seed_reference_data.sql` | Dados de referência (catálogos iniciais) |
 | `20260831000003_row_level_security.sql` | RLS + políticas                 |
 | `20260831000004_auth_hooks.sql`  | Triggers de criação/sincronização do voluntário |
+| `20260901000005_create_atendimento.sql` | Catálogo `cepzk_atendimento` + seed; escala e tratamento passam a usar `atendimento_id`; precedência sai do setor (migra os dados existentes) |
+
+> A `005` preserva o histórico: toda combinação setor + horário já usada em
+> `cepzk_escala`/`cepzk_tratamento` vira um atendimento antes das colunas
+> antigas serem removidas — nenhum registro se perde.
+
 
 Para aplicar em um projeto existente, veja
 [README.md → Começando](../README.md#começando).
