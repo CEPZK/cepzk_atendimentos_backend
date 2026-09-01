@@ -21,12 +21,12 @@ from (values
 ) as v (nome)
 where not exists (select 1 from public.cepzk_horario h where h.nome = v.nome);
 
--- Mapeamento setor -> departamento (CONFIRMAR com a organização do centro)
+-- Mapeamento setor -> departamento (definitivo)
 insert into public.cepzk_setor (nome, departamento_id)
 select s.nome, d.id
 from (values
     ('Atendimento Fraterno',    'Atendimento Fraterno'),
-    ('Acolher com Amor',        'Mediúnico'),
+    ('Acolher com Amor',        'Fluidoterapia'),
     ('Desobsessão Infantil I',  'Mediúnico'),
     ('Desobsessão Infantil II', 'Mediúnico')
 ) as s (nome, departamento)

@@ -259,9 +259,7 @@ FKs já permitem o uso imediato.
 | `20260831000001_create_schema.sql` | Tabelas, FKs e índices               |
 | `20260831000002_seed_reference_data.sql` | Dados de referência            |
 | `20260831000003_row_level_security.sql` | RLS + políticas                 |
-| `20260831000004_auth_hooks.sql`  | Trigger de criação do voluntário      |
-| `20260831000005_seed_setor_mediunico.sql` | Setor Mediúnico no seed        |
-| `20260831000006_fix_setor_departamento_mapping.sql` | Mapeamento definitivo setor→departamento |
+| `20260831000004_auth_hooks.sql`  | Triggers de criação/sincronização do voluntário |
 
 Para aplicar em um projeto existente, veja
 [README.md → Começando](../README.md#começando).
