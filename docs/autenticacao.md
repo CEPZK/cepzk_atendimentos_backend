@@ -15,6 +15,37 @@ centro).
 - **JWT:** expiração padrão de 1 hora. O `id` do usuário no JWT é o mesmo
   `uuid` usado em `cepzk_voluntario.id`.
 
+## Como a aplicação acessa o banco
+
+A aplicação (rodando no navegador ou em um servidor no seu computador)
+**não conecta diretamente no Postgres**. Ela fala com a **API do Supabase
+(PostgREST)** via HTTPS, usando:
+
+- `SUPABASE_URL` — a URL do projeto;
+- `SUPABASE_ANON_KEY` — a chave pública (pode ficar no frontend);
+- **o JWT do usuário logado** — é ele que define o papel usado no banco:
+  `authenticated` quando logado, `anon` quando não.
+
+Exemplo com `supabase-js`:
+
+```js
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// depois que o voluntário faz login:
+const { data, error } = await supabase.from('cepzk_assistido').select('*');
+```
+
+São as políticas de RLS (seção abaixo) que decidem o que cada request pode
+fazer: sem login, nenhum acesso às tabelas; com login de voluntário, acesso
+conforme as políticas.
+
+> Conexão TCP direta com o Postgres a partir do computador não é o modelo
+> de uso do Supabase. Para administração local, use o *SQL Editor* do
+> dashboard ou o CLI `supabase` (que se conecta pela rede privada do
+> projeto).
+
 ## Perfil do voluntário
 
 `cepzk_voluntario` é um espelho 1:1 de `auth.users`. O registro do voluntário
