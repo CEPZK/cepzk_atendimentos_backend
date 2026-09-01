@@ -94,8 +94,6 @@ referenciam — assim não é possível registrar uma combinação inexistente
 | `horario_id` | `smallint`    | FK → horário                      |
 
 `unique (setor_id, horario_id)` impede o mesmo horário repetido no setor.
-Há também um `unique (id, setor_id)` — chave alternativa que sustenta a FK
-composta de `cepzk_tratamento` (veja a tabela adiante).
 
 **Atendimentos (seed):**
 
@@ -166,20 +164,12 @@ voluntário o marca como completo quando o assistido recebe alta.
 | `id`             | `serial`   | PK                                    |
 | `assistido_id`   | `int`      | FK → assistido (`on delete cascade`)  |
 | `atendimento_id` | `smallint` | FK → atendimento                      |
-| `setor_id`       | `smallint` | **Derivado** do atendimento (não informar) |
 | `obs`            | `text`     | Observações livres                    |
 | `estado`         | `text`     | `not null default 'pendente'`         |
 
-`unique (assistido_id, setor_id)` impede que o mesmo assistido tenha dois
-tratamentos no mesmo setor, ainda que em horários diferentes.
-
-> **Sobre o `setor_id`:** ele existe *apenas* para sustentar essa regra de
-> unicidade e é **derivado** — um trigger
-> (`on_tratamento_setor_derivado`) o preenche a partir do
-> `atendimento_id` em todo insert/update, e a FK composta
-> `(atendimento_id, setor_id) → cepzk_atendimento (id, setor_id)` garante
-> que ele jamais divirja do atendimento. **A aplicação envia somente
-> `atendimento_id`.**
+`unique (assistido_id, atendimento_id)` evita o mesmo assistido duplicado
+no mesmo atendimento. **Não** há restrição por setor: o assistido pode ter
+tratamentos no mesmo setor em horários diferentes.
 
 
 ### Acolher com Amor (ACA)
@@ -275,9 +265,6 @@ Relatório de cada sessão, com os voluntários responsáveis.
   que apontam para voluntários em dados transacionais (entrevistador, ponte,
   dirigente) **não** fazem cascade — a exclusão falha enquanto houver
   referências (preserva histórico).
-- **Colunas derivadas:** `cepzk_tratamento.setor_id` é mantido por trigger a
-  partir do atendimento e travado por FK composta — só existe para viabilizar
-  o `unique (assistido_id, setor_id)`. A aplicação não o informa.
 - **Nomenclatura:** nomes de tabelas/colunas em português, prefixo do domínio
   (`cepzk_` / `aca_`); índices `*_idx` em inglês.
 - **Data/hora:** sempre `timestamptz` (fuso do servidor do Supabase; a

@@ -18,6 +18,9 @@
 --
 -- Migração de dados: as combinações já existentes em escala/tratamento são
 -- preservadas (viram atendimentos) para que nenhum registro se perca.
+--
+-- Esta migration também encerra a regra "um tratamento por setor": o
+-- assistido pode ter tratamentos no mesmo setor em horários diferentes.
 -- =============================================================================
 
 -- -----------------------------------------------------------------------------
@@ -29,10 +32,7 @@ create table public.cepzk_atendimento (
     setor_id   smallint not null references public.cepzk_setor (id),
     horario_id smallint not null references public.cepzk_horario (id),
     -- Um setor não repete o mesmo horário
-    unique (setor_id, horario_id),
-    -- Chave alternativa que sustenta a FK composta de cepzk_tratamento
-    -- (garante que o setor gravado no tratamento é o setor do atendimento)
-    unique (id, setor_id)
+    unique (setor_id, horario_id)
 );
 
 create index cepzk_atendimento_setor_id_idx
@@ -130,15 +130,14 @@ create index cepzk_escala_atendimento_id_idx
 -- -----------------------------------------------------------------------------
 -- 5. cepzk_tratamento — (setor_id, horario_id) → atendimento_id
 --
--- `setor_id` permanece como coluna DERIVADA (preenchida por trigger a partir
--- do atendimento) por um único motivo: manter a regra `unique (assistido_id,
--- setor_id)` — um assistido não faz dois tratamentos no mesmo setor, mesmo em
--- horários diferentes. A FK composta abaixo garante que ela nunca divirja do
--- atendimento; a aplicação envia apenas `atendimento_id`.
+-- Não há mais a regra "um tratamento por setor": o assistido pode ter
+-- tratamentos no mesmo setor em horários diferentes. O `unique` agora é por
+-- atendimento, apenas para evitar o mesmo assistido duplicado no mesmo
+-- atendimento.
 -- -----------------------------------------------------------------------------
 
 alter table public.cepzk_tratamento
-    add column atendimento_id smallint;
+    add column atendimento_id smallint references public.cepzk_atendimento (id);
 
 update public.cepzk_tratamento t
 set atendimento_id = a.id
@@ -148,65 +147,19 @@ where a.setor_id = t.setor_id and a.horario_id = t.horario_id;
 alter table public.cepzk_tratamento
     alter column atendimento_id set not null;
 
+-- Remove as colunas antigas. Junto com elas caem, automaticamente, a FK para
+-- cepzk_setor, o unique (assistido_id, setor_id) e os índices de setor_id e
+-- horario_id.
 alter table public.cepzk_tratamento
+    drop column setor_id,
     drop column horario_id;
 
--- A FK simples setor -> cepzk_setor dá lugar à FK composta com o atendimento
-do $$
-declare
-    fk text;
-begin
-    for fk in
-        select con.conname
-        from pg_constraint con
-        where con.conrelid = 'public.cepzk_tratamento'::regclass
-          and con.contype = 'f'
-          and con.confrelid = 'public.cepzk_setor'::regclass
-    loop
-        execute format('alter table public.cepzk_tratamento drop constraint %I', fk);
-    end loop;
-end
-$$;
-
 alter table public.cepzk_tratamento
-    add constraint cepzk_tratamento_atendimento_id_fkey
-    foreign key (atendimento_id, setor_id)
-    references public.cepzk_atendimento (id, setor_id)
-    on update cascade;
+    add constraint cepzk_tratamento_assistido_id_atendimento_id_key
+    unique (assistido_id, atendimento_id);
 
 create index cepzk_tratamento_atendimento_id_idx
     on public.cepzk_tratamento (atendimento_id);
-
--- Preenche/corrige setor_id a partir do atendimento: a aplicação nunca
--- precisa informá-lo
-create or replace function public.cepzk_tratamento_setor_derivado()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-    setor smallint;
-begin
-    select a.setor_id into setor
-    from public.cepzk_atendimento a
-    where a.id = new.atendimento_id;
-
-    if setor is null then
-        raise exception 'atendimento_id % inexistente', new.atendimento_id
-            using errcode = 'foreign_key_violation';
-    end if;
-
-    new.setor_id := setor;
-    return new;
-end;
-$$;
-
-drop trigger if exists on_tratamento_setor_derivado on public.cepzk_tratamento;
-create trigger on_tratamento_setor_derivado
-    before insert or update of atendimento_id, setor_id on public.cepzk_tratamento
-    for each row
-    execute function public.cepzk_tratamento_setor_derivado();
 
 -- -----------------------------------------------------------------------------
 -- 6. RLS do novo catálogo (mesma política da migration 003)
