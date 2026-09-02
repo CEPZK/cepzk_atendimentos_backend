@@ -170,6 +170,7 @@ voluntário o marca como completo quando o assistido recebe alta.
 | `atendimento_id` | `smallint` | FK → atendimento                      |
 | `obs`            | `text`     | Observações livres                    |
 | `estado`         | `text`     | `not null default 'pendente'`         |
+| `data_atualizacao` | `timestamptz` | `not null default now()` — atualizada pela aplicação a cada `update` |
 
 `unique (assistido_id, atendimento_id)` evita o mesmo assistido duplicado
 no mesmo atendimento. **Não** há restrição por setor: o assistido pode ter
@@ -306,6 +307,7 @@ FKs já permitem o uso imediato.
 | `20260831000003_row_level_security.sql` | RLS + políticas                 |
 | `20260831000004_auth_hooks.sql`  | Triggers de criação/sincronização do voluntário |
 | `20260901000005_create_atendimento.sql` | Catálogo `cepzk_atendimento` + seed; escala e tratamento passam a usar `atendimento_id`; precedência sai do setor (migra os dados existentes) |
+| `20260901000006_add_data_atualizacao_tratamento.sql` | `cepzk_tratamento.data_atualizacao` |
 
 > A `005` preserva o histórico: toda combinação setor + horário já usada em
 > `cepzk_escala`/`cepzk_tratamento` vira um atendimento antes das colunas
