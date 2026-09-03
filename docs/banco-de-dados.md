@@ -174,9 +174,15 @@ voluntário o marca como completo quando o assistido recebe alta.
 | `data_atualizacao` | `timestamptz` | `not null default now()` — atualizada pela aplicação a cada `update` |
 | `data_arquivamento` | `timestamptz` | Opcional (`null`) — data/hora em que o tratamento foi arquivado; `null` indica que está ativo |
 
-`unique (assistido_id, atendimento_id)` evita o mesmo assistido duplicado
-no mesmo atendimento. **Não** há restrição por setor: o assistido pode ter
-tratamentos no mesmo setor em horários diferentes.
+**Não** há restrição `unique` em `(assistido_id, atendimento_id)`: essa regra
+é responsabilidade da aplicação, que só permite criar um novo tratamento para
+o mesmo par (assistido, atendimento) se o existente estiver **arquivado**
+(`data_arquivamento` preenchido). Assim o histórico de tratamentos arquivados
+é preservado. Existe apenas um índice (não único) em
+`(assistido_id, atendimento_id)` para consultas.
+
+Também **não** há restrição por setor: o assistido pode ter tratamentos no
+mesmo setor em horários diferentes.
 
 
 ### Acolher com Amor (ACA)
@@ -312,6 +318,7 @@ FKs já permitem o uso imediato.
 | `20260901000006_add_data_atualizacao_tratamento.sql` | `cepzk_tratamento.data_atualizacao` |
 | `20260903000007_add_data_arquivamento_assistido.sql` | `cepzk_assistido.data_arquivamento` |
 | `20260903000008_add_data_arquivamento_tratamento.sql` | `cepzk_tratamento.data_arquivamento` |
+| `20260903000009_drop_unique_tratamento.sql` | Remove o `unique (assistido_id, atendimento_id)` de `cepzk_tratamento` (regra passa para a aplicação: novo tratamento só se o existente estiver arquivado) |
 
 > A `005` preserva o histórico: toda combinação setor + horário já usada em
 > `cepzk_escala`/`cepzk_tratamento` vira um atendimento antes das colunas
