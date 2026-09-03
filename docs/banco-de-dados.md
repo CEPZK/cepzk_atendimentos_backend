@@ -156,6 +156,7 @@ Atendimento Fraterno.
 | `nome_completo`      | `text`      | `not null unique`                   |
 | `entrevistador_id`   | `uuid`      | FK → voluntário (quem entrevistou)  |
 | `data_criacao`       | `timestamptz` | `not null default now()`         |
+| `data_arquivamento`  | `timestamptz` | Opcional (`null`) — data/hora em que o assistido foi arquivado; `null` indica que está ativo |
 
 #### `cepzk_tratamento`
 
@@ -308,6 +309,7 @@ FKs já permitem o uso imediato.
 | `20260831000004_auth_hooks.sql`  | Triggers de criação/sincronização do voluntário |
 | `20260901000005_create_atendimento.sql` | Catálogo `cepzk_atendimento` + seed; escala e tratamento passam a usar `atendimento_id`; precedência sai do setor (migra os dados existentes) |
 | `20260901000006_add_data_atualizacao_tratamento.sql` | `cepzk_tratamento.data_atualizacao` |
+| `20260903000007_add_data_arquivamento_assistido.sql` | `cepzk_assistido.data_arquivamento` |
 
 > A `005` preserva o histórico: toda combinação setor + horário já usada em
 > `cepzk_escala`/`cepzk_tratamento` vira um atendimento antes das colunas
