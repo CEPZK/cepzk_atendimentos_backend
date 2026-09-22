@@ -53,7 +53,7 @@ Mediúnico).
 #### `cepzk_setor`
 
 Setores de atendimento, cada um pertencente a um departamento
-(ex.: Acolher com Amor, Desobsessão Infantil I).
+(ex.: Acolher com Amor, Desobsessão Infantil).
 
 | Coluna                   | Tipo          | Observação        |
 | ------------------------ | ------------- | ----------------- |
@@ -63,12 +63,11 @@ Setores de atendimento, cada um pertencente a um departamento
 
 **Mapeamento setor → departamento (seed):**
 
-| Setor                   | Departamento         |
-| ----------------------- | -------------------- |
-| Atendimento Fraterno    | Atendimento Fraterno |
-| Desobsessão Infantil I  | Mediúnico            |
-| Desobsessão Infantil II | Mediúnico            |
-| Acolher com Amor        | Fluidoterapia        |
+| Setor                | Departamento         |
+| -------------------- | -------------------- |
+| Atendimento Fraterno | Atendimento Fraterno |
+| Desobsessão Infantil | Mediúnico            |
+| Acolher com Amor     | Fluidoterapia        |
 
 #### `cepzk_horario`
 
@@ -101,13 +100,12 @@ Na migração, cada atendimento herdou a precedência do seu setor.
 
 **Atendimentos (seed):**
 
-| Setor                   | Horário           | Precedência |
-| ----------------------- | ----------------- | ----------- |
-| Atendimento Fraterno    | Terça-Feira 8h    | 0           |
-| Atendimento Fraterno    | Sexta-Feira 19h   | 0           |
-| Desobsessão Infantil I  | Sexta-Feira 19h30 | 1           |
-| Desobsessão Infantil II | Sexta-Feira 19h30 | 1           |
-| Acolher com Amor        | Sábado 9h30       | 10          |
+| Setor                | Horário           | Precedência |
+| -------------------- | ----------------- | ----------- |
+| Atendimento Fraterno | Terça-Feira 8h    | 0           |
+| Atendimento Fraterno | Sexta-Feira 19h   | 0           |
+| Desobsessão Infantil | Sexta-Feira 19h30 | 1           |
+| Acolher com Amor     | Sábado 9h30       | 10          |
 
 
 ### Voluntários
@@ -154,6 +152,7 @@ Atendimento Fraterno.
 | -------------------- | ----------- | ----------------------------------- |
 | `id`                 | `serial`    | PK                                  |
 | `nome_completo`      | `text`      | `not null unique`                   |
+| `idade`              | `smallint`  | Opcional (`null`) — idade do assistido; `null` indica não informada |
 | `entrevistador_id`   | `uuid`      | FK → voluntário (quem entrevistou)  |
 | `data_criacao`       | `timestamptz` | `not null default now()`         |
 | `data_arquivamento`  | `timestamptz` | Opcional (`null`) — data/hora em que o assistido foi arquivado; `null` indica que está ativo |
@@ -291,9 +290,9 @@ forma idempotente:
 | Catálogo          | Valores iniciais                                                    |
 | ----------------- | ------------------------------------------------------------------- |
 | Departamentos     | Atendimento Fraterno, Fluidoterapia, Mediúnico                      |
-| Setores           | Atendimento Fraterno, Acolher com Amor, Desobsessão Infantil I/II   |
+| Setores           | Atendimento Fraterno, Acolher com Amor, Desobsessão Infantil        |
 | Horários          | Terça-Feira 8h, Terça-Feira 20h, Sexta-Feira 19h, Sexta-Feira 19h30, Sábado 9h30 |
-| Atendimentos      | AF Terça-Feira 8h (0), AF Sexta-Feira 19h (0), DI I e DI II Sexta-Feira 19h30 (1), ACA Sábado 9h30 (10) — entre parênteses, a precedência |
+| Atendimentos      | AF Terça-Feira 8h (0), AF Sexta-Feira 19h (0), DI Sexta-Feira 19h30 (1), ACA Sábado 9h30 (10) — entre parênteses, a precedência |
 | Distonias         | TEA, Esquizofrenia, Outros                                          |
 | Queixas           | Convulsão, Dificuldade de Comunicação, Dificuldade de Interação Social, Comportamentos Repetitivos, Comportamentos Violentos |
 | Procedimentos     | TEA Geral, Distonias Mentais Geral, Esquizofrenia, Convulsões       |
@@ -302,6 +301,12 @@ O horário `Terça-Feira 8h` e os atendimentos vêm da migration
 `20260901000005_create_atendimento.sql`; os demais catálogos, da `002`.
 `Terça-Feira 20h` permanece no catálogo de horários, hoje sem atendimento
 vinculado.
+
+A `002` insere os dois setores originais de Desobsessão Infantil (I e II); a
+migration `20260922000010_remove_setor_desobsessao_infantil_i.sql` unifica os
+dois — renomeia o II para `Desobsessão Infantil` e remove o I, reapontando
+atendimentos, escala e tratamentos. As tabelas acima mostram o catálogo já
+depois dessa unificação.
 
 Novos valores podem ser inseridos diretamente pela aplicação ou SQL — as
 FKs já permitem o uso imediato.
@@ -319,6 +324,8 @@ FKs já permitem o uso imediato.
 | `20260903000007_add_data_arquivamento_assistido.sql` | `cepzk_assistido.data_arquivamento` |
 | `20260903000008_add_data_arquivamento_tratamento.sql` | `cepzk_tratamento.data_arquivamento` |
 | `20260903000009_drop_unique_tratamento.sql` | Remove o `unique (assistido_id, atendimento_id)` de `cepzk_tratamento` (regra passa para a aplicação: novo tratamento só se o existente estiver arquivado) |
+| `20260922000010_remove_setor_desobsessao_infantil_i.sql` | Unifica a Desobsessão Infantil: renomeia `Desobsessão Infantil II` para `Desobsessão Infantil` e remove `Desobsessão Infantil I`, migrando atendimentos, escala e tratamentos |
+| `20260922000011_add_idade_assistido.sql` | `cepzk_assistido.idade` (`smallint`, opcional) |
 
 > A `005` preserva o histórico: toda combinação setor + horário já usada em
 > `cepzk_escala`/`cepzk_tratamento` vira um atendimento antes das colunas
