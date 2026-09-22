@@ -31,7 +31,13 @@ mantêm a agenda de sessões de cada assistido, com procedimentos e relatórios.
 │       ├── 20260831000002_seed_reference_data.sql  # Catálogos iniciais
 │       ├── 20260831000003_row_level_security.sql   # RLS
 │       ├── 20260831000004_auth_hooks.sql           # Triggers do Supabase Auth
-│       └── 20260901000005_create_atendimento.sql   # Catálogo de atendimentos
+│       ├── 20260901000005_create_atendimento.sql   # Catálogo de atendimentos
+│       ├── 20260901000006_add_data_atualizacao_tratamento.sql
+│       ├── 20260903000007_add_data_arquivamento_assistido.sql
+│       ├── 20260903000008_add_data_arquivamento_tratamento.sql
+│       ├── 20260903000009_drop_unique_tratamento.sql
+│       ├── 20260922000010_remove_setor_desobsessao_infantil_i.sql
+│       └── 20260922000011_add_idade_assistido.sql
 ├── docs/
 │   ├── banco-de-dados.md    # Documentação do banco (PT-BR)
 │   └── autenticacao.md      # Documentação da autenticação (PT-BR)
@@ -61,7 +67,7 @@ supabase db push
 **Opção B — SQL Editor (manual):**
 
 No dashboard, abra *SQL Editor* e execute os arquivos de
-`supabase/migrations/` **em ordem** (001 → 005).
+`supabase/migrations/` **em ordem** (001 → 011).
 
 ### 3. Configure o ambiente
 
